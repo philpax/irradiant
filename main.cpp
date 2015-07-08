@@ -396,6 +396,12 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        if (auto floatingLiteral = dyn_cast<FloatingLiteral>(stmt))
+        {
+            std::cout << floatingLiteral->getValueAsApproximateDouble();
+            return true;
+        }
+
         if (auto declRefExpr = dyn_cast<DeclRefExpr>(stmt))
         {
             std::cout << declRefExpr->getDecl()->getNameAsString();

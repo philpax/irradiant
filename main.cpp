@@ -205,16 +205,16 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                     std::cout << " - ";
                     break;
                 case BO_LT:
-                    std::cout << " <= ";
-                    break;
-                case BO_GT:
-                    std::cout << " >= ";
-                    break;
-                case BO_LE:
                     std::cout << " < ";
                     break;
-                case BO_GE:
+                case BO_GT:
                     std::cout << " > ";
+                    break;
+                case BO_LE:
+                    std::cout << " <= ";
+                    break;
+                case BO_GE:
+                    std::cout << " >= ";
                     break;
                 case BO_EQ:
                     std::cout << " == ";

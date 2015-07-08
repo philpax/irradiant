@@ -136,19 +136,109 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
         if (auto binaryOperator = dyn_cast<BinaryOperator>(stmt))
         {
-            // TODO: Replace this with something more robust
-            TraverseStmt(binaryOperator->getLHS());
-            auto opcodeStr = binaryOperator->getOpcodeStr().str();
-
             if (binaryOperator->isCompoundAssignmentOp())
             {
-                opcodeStr = opcodeStr.substr(0, opcodeStr.find_last_of('='));
-                std::cout << " = ";
                 TraverseStmt(binaryOperator->getLHS());
+                std::cout << " = ";
             }
 
-            std::cout << " " << opcodeStr << " ";
-            TraverseStmt(binaryOperator->getRHS());
+            auto opcode = binaryOperator->getOpcode();
+
+            // Lua doesn't have native bitwise operators, so these need to be lowered
+            // to function calls
+            if (binaryOperator->isBitwiseOp())
+            {
+                switch (opcode)
+                {
+                case BO_Shl:
+                case BO_ShlAssign:
+                    std::cout << "bit._shl(";
+                    break;
+                case BO_Shr:
+                case BO_ShrAssign:
+                    std::cout << "bit._shr(";
+                    break;
+                case BO_And:
+                case BO_AndAssign:
+                    std::cout << "bit._and(";
+                    break;
+                case BO_Xor:
+                case BO_XorAssign:
+                    std::cout << "bit._xor(";
+                    break;
+                case BO_Or:
+                case BO_OrAssign:
+                    std::cout << "bit._or(";
+                    break;
+                default:
+                    break;
+                }
+
+                TraverseStmt(binaryOperator->getLHS());
+                std::cout << ", ";
+                TraverseStmt(binaryOperator->getRHS());
+                std::cout << ")";
+            }
+            else
+            {
+                TraverseStmt(binaryOperator->getLHS());
+                switch (opcode)
+                {
+                case BO_Mul:
+                case BO_MulAssign:
+                    std::cout << " * ";
+                    break;
+                case BO_Div:
+                case BO_DivAssign:
+                    std::cout << " / ";
+                    break;
+                case BO_Rem:
+                case BO_RemAssign:
+                    std::cout << " % ";
+                    break;
+                case BO_Add:
+                case BO_AddAssign:
+                    std::cout << " + ";
+                    break;
+                case BO_Sub:
+                case BO_SubAssign:
+                    std::cout << " - ";
+                    break;
+                case BO_LT:
+                    std::cout << " <= ";
+                    break;
+                case BO_GT:
+                    std::cout << " >= ";
+                    break;
+                case BO_LE:
+                    std::cout << " < ";
+                    break;
+                case BO_GE:
+                    std::cout << " > ";
+                    break;
+                case BO_EQ:
+                    std::cout << " == ";
+                    break;
+                case BO_NE:
+                    std::cout << " != ";
+                    break;
+                case BO_LAnd:
+                    std::cout << " and ";
+                    break;
+                case BO_LOr:
+                    std::cout << " or ";
+                    break;
+                case BO_Comma:
+                    std::cout << ", ";
+                    break;
+                case BO_Assign:
+                    std::cout << " = ";
+                    break;
+                default:
+                    break;
+                }
+                TraverseStmt(binaryOperator->getRHS());
+            }
             return true;
         }
 
@@ -337,6 +427,8 @@ class DumpAction : public ASTFrontendAction
   public:
     virtual bool BeginSourceFileAction(CompilerInstance& compiler, StringRef) override
     {
+        std::cout << "dofile \"shim/lua/bitwise.lua\"\n";
+
         class PrintIncludes : public PPCallbacks
         {
             virtual void InclusionDirective(SourceLocation, Token const&, StringRef fileName,

@@ -477,10 +477,20 @@ class DumpAction : public ASTFrontendAction
 
         class PrintIncludes : public PPCallbacks
         {
-            virtual void InclusionDirective(SourceLocation, Token const&, StringRef fileName,
+        public:
+            PrintIncludes(SourceManager& sourceManager)
+                : sourceManager(sourceManager)
+            {
+            }
+
+            virtual void InclusionDirective(SourceLocation location, Token const&, StringRef fileName,
                                             bool isAngled, CharSourceRange, FileEntry const*,
                                             StringRef, StringRef, Module const*) override
             {
+                // Skip over includes that are not from the main file
+                if (sourceManager.getFileID(location) != sourceManager.getMainFileID())
+                    return;
+
                 auto newFileName = fileName.str();
                 newFileName = newFileName.substr(0, newFileName.find_last_of('.'));
                 newFileName += ".lua";
@@ -490,9 +500,12 @@ class DumpAction : public ASTFrontendAction
 
                 std::cout << "dofile \"" << newFileName << "\"\n";
             }
+
+            SourceManager& sourceManager;
         };
 
-        std::unique_ptr<PrintIncludes> callback(new PrintIncludes);
+        std::unique_ptr<PrintIncludes> callback(
+            new PrintIncludes(compiler.getSourceManager()));
         auto& preprocessor = compiler.getPreprocessor();
         preprocessor.addPPCallbacks(std::move(callback));
 

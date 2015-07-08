@@ -1,8 +1,8 @@
 -- Lua 5.2-compatible shim
-bin = {}
-bin._and = bit32.band
-bin._not = bit32.bnot
-bin._or  = bit32.bor
-bin._xor = bit32.xor
-bin._shl = bit32.lshift
-bin._shr = bit32.rshift
+bit = {}
+bit._and = bit32.band
+bit._not = bit32.bnot
+bit._or  = bit32.bor
+bit._xor = bit32.xor
+bit._shl = bit32.lshift
+bit._shr = bit32.rshift

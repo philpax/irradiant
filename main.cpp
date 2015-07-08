@@ -253,6 +253,8 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         if (auto declStmt = dyn_cast<DeclStmt>(stmt))
         {
             bool first = true;
+
+            std::vector<Expr*> initExprs;
             for (auto decl : declStmt->decls())
             {
                 if (first)
@@ -260,8 +262,44 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 else
                     std::cout << ", ";
 
-                TraverseDecl(decl);
+                if (auto varDecl = dyn_cast<VarDecl>(decl))
+                {
+                    auto name = varDecl->getNameAsString();
+                    if (name.empty())
+                        continue;
+
+                    std::cout << name;
+
+                    if (varDecl->hasInit())
+                        initExprs.push_back(varDecl->getInit());
+                    else
+                        initExprs.push_back(nullptr);
+                }
+                else
+                {
+                    TraverseDecl(decl);
+                }
                 first = false;
+            }
+
+            auto notNullPredicate = [](Expr* e) { return e != nullptr; };
+            if (initExprs.size() &&
+                std::any_of(initExprs.begin(), initExprs.end(), notNullPredicate))
+            {
+                std::cout << " = ";
+                bool first = true;
+                for (auto expr : initExprs)
+                {
+                    if (!first)
+                        std::cout << ", ";
+
+                    if (expr == nullptr)
+                        std::cout << "nil";
+                    else
+                        TraverseStmt(expr);
+
+                    first = false;
+                }
             }
 
             return true;
@@ -322,6 +360,8 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        // Duplicated from TraverseStmt: required to catch
+        // unhandled var decls (see: global scope)
         if (auto varDecl = dyn_cast<VarDecl>(decl))
         {
             auto name = varDecl->getNameAsString();

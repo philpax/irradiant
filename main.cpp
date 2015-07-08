@@ -127,10 +127,10 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         if (auto arraySubscriptExpr = dyn_cast<ArraySubscriptExpr>(stmt))
         {
             TraverseStmt(arraySubscriptExpr->getBase());
-            std::cout << "[";
+            std::cout << "[(";
             TraverseStmt(arraySubscriptExpr->getIdx());
             // Add 1 to compensate for 1-based indexing
-            std::cout << "+1]";
+            std::cout << ")+1]";
             return true;
         }
 

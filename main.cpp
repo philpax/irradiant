@@ -134,6 +134,30 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        if (auto unaryOperator = dyn_cast<UnaryOperator>(stmt))
+        {
+            auto opcode = unaryOperator->getOpcode();
+            switch (opcode)
+            {
+            case UO_Minus:
+                std::cout << "-";
+                TraverseStmt(unaryOperator->getSubExpr());
+                break;
+            case UO_Not:
+                std::cout << "not ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                break;
+            case UO_LNot:
+                std::cout << "bit._not(";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << ")";
+                break;
+            default:
+                break;
+            }
+            return true;
+        }
+
         if (auto binaryOperator = dyn_cast<BinaryOperator>(stmt))
         {
             if (binaryOperator->isCompoundAssignmentOp())

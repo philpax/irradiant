@@ -146,99 +146,101 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
             // Lua doesn't have native bitwise operators, so these need to be lowered
             // to function calls
-            if (binaryOperator->isBitwiseOp())
+            bool normalBinaryOperator = false;
+            switch (opcode)
             {
-                switch (opcode)
-                {
-                case BO_Shl:
-                case BO_ShlAssign:
-                    std::cout << "bit._shl(";
-                    break;
-                case BO_Shr:
-                case BO_ShrAssign:
-                    std::cout << "bit._shr(";
-                    break;
-                case BO_And:
-                case BO_AndAssign:
-                    std::cout << "bit._and(";
-                    break;
-                case BO_Xor:
-                case BO_XorAssign:
-                    std::cout << "bit._xor(";
-                    break;
-                case BO_Or:
-                case BO_OrAssign:
-                    std::cout << "bit._or(";
-                    break;
-                default:
-                    break;
-                }
+            case BO_Shl:
+            case BO_ShlAssign:
+                std::cout << "bit._shl(";
+                break;
+            case BO_Shr:
+            case BO_ShrAssign:
+                std::cout << "bit._shr(";
+                break;
+            case BO_And:
+            case BO_AndAssign:
+                std::cout << "bit._and(";
+                break;
+            case BO_Xor:
+            case BO_XorAssign:
+                std::cout << "bit._xor(";
+                break;
+            case BO_Or:
+            case BO_OrAssign:
+                std::cout << "bit._or(";
+                break;
+            default:
+                normalBinaryOperator = true;
+                break;
+            }
 
+            if (!normalBinaryOperator)
+            {
                 TraverseStmt(binaryOperator->getLHS());
                 std::cout << ", ";
                 TraverseStmt(binaryOperator->getRHS());
                 std::cout << ")";
+                return true;
             }
-            else
+
+            TraverseStmt(binaryOperator->getLHS());
+            switch (opcode)
             {
-                TraverseStmt(binaryOperator->getLHS());
-                switch (opcode)
-                {
-                case BO_Mul:
-                case BO_MulAssign:
-                    std::cout << " * ";
-                    break;
-                case BO_Div:
-                case BO_DivAssign:
-                    std::cout << " / ";
-                    break;
-                case BO_Rem:
-                case BO_RemAssign:
-                    std::cout << " % ";
-                    break;
-                case BO_Add:
-                case BO_AddAssign:
-                    std::cout << " + ";
-                    break;
-                case BO_Sub:
-                case BO_SubAssign:
-                    std::cout << " - ";
-                    break;
-                case BO_LT:
-                    std::cout << " < ";
-                    break;
-                case BO_GT:
-                    std::cout << " > ";
-                    break;
-                case BO_LE:
-                    std::cout << " <= ";
-                    break;
-                case BO_GE:
-                    std::cout << " >= ";
-                    break;
-                case BO_EQ:
-                    std::cout << " == ";
-                    break;
-                case BO_NE:
-                    std::cout << " != ";
-                    break;
-                case BO_LAnd:
-                    std::cout << " and ";
-                    break;
-                case BO_LOr:
-                    std::cout << " or ";
-                    break;
-                case BO_Comma:
-                    std::cout << ", ";
-                    break;
-                case BO_Assign:
-                    std::cout << " = ";
-                    break;
-                default:
-                    break;
-                }
-                TraverseStmt(binaryOperator->getRHS());
+            case BO_Mul:
+            case BO_MulAssign:
+                std::cout << " * ";
+                break;
+            case BO_Div:
+            case BO_DivAssign:
+                std::cout << " / ";
+                break;
+            case BO_Rem:
+            case BO_RemAssign:
+                std::cout << " % ";
+                break;
+            case BO_Add:
+            case BO_AddAssign:
+                std::cout << " + ";
+                break;
+            case BO_Sub:
+            case BO_SubAssign:
+                std::cout << " - ";
+                break;
+            case BO_LT:
+                std::cout << " < ";
+                break;
+            case BO_GT:
+                std::cout << " > ";
+                break;
+            case BO_LE:
+                std::cout << " <= ";
+                break;
+            case BO_GE:
+                std::cout << " >= ";
+                break;
+            case BO_EQ:
+                std::cout << " == ";
+                break;
+            case BO_NE:
+                std::cout << " != ";
+                break;
+            case BO_LAnd:
+                std::cout << " and ";
+                break;
+            case BO_LOr:
+                std::cout << " or ";
+                break;
+            case BO_Comma:
+                std::cout << ", ";
+                break;
+            case BO_Assign:
+                std::cout << " = ";
+                break;
+            default:
+                break;
             }
+            TraverseStmt(binaryOperator->getRHS());
+
             return true;
         }
 

@@ -142,6 +142,14 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        if (auto parenExpr = dyn_cast<ParenExpr>(stmt))
+        {
+            std::cout << "(";
+            TraverseStmt(parenExpr->getSubExpr());
+            std::cout << ")";
+            return true;
+        }
+
         return RecursiveASTVisitor::TraverseStmt(stmt);
     }
 

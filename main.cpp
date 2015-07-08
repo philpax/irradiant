@@ -160,6 +160,39 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        if (auto declStmt = dyn_cast<DeclStmt>(stmt))
+        {
+            bool first = true;
+            for (auto decl : declStmt->decls())
+            {
+                if (first)
+                    std::cout << "local ";
+                else
+                    std::cout << ", ";
+
+                TraverseDecl(decl);
+                first = false;
+            }
+
+            return true;
+        }
+
+        if (auto initListExpr = dyn_cast<InitListExpr>(stmt))
+        {
+            bool first = true;
+            std::cout << "{";
+            for (auto expr : *initListExpr)
+            {
+                if (!first)
+                    std::cout << ", ";
+
+                TraverseStmt(expr);
+                first = false;
+            }
+            std::cout << "}";
+            return true;
+        }
+
         return RecursiveASTVisitor::TraverseStmt(stmt);
     }
 
@@ -197,6 +230,23 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        if (auto varDecl = dyn_cast<VarDecl>(decl))
+        {
+            auto name = varDecl->getNameAsString();
+            if (name.empty())
+                return true;
+
+            std::cout << name;
+
+            if (varDecl->hasInit())
+            {
+                std::cout << " = ";
+                TraverseStmt(varDecl->getInit());
+            }
+
+            return true;
+        }
+
         return RecursiveASTVisitor::TraverseDecl(decl);
     }
 
@@ -227,22 +277,6 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 std::cout << " ";
 
             return true;
-        }
-
-        return true;
-    }
-
-    bool VisitDecl(Decl* decl)
-    {
-        if (auto varDecl = dyn_cast<VarDecl>(decl))
-        {
-            auto name = varDecl->getNameAsString();
-            if (name.empty())
-                return true;
-
-            std::cout << "local " << name;
-            if (varDecl->hasInit())
-                std::cout << " = ";
         }
 
         return true;

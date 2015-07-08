@@ -136,8 +136,18 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
         if (auto binaryOperator = dyn_cast<BinaryOperator>(stmt))
         {
+            // TODO: Replace this with something more robust
             TraverseStmt(binaryOperator->getLHS());
-            std::cout << " " << binaryOperator->getOpcodeStr().str() << " ";
+            auto opcodeStr = binaryOperator->getOpcodeStr().str();
+
+            if (binaryOperator->isCompoundAssignmentOp())
+            {
+                opcodeStr = opcodeStr.substr(0, opcodeStr.find_last_of('='));
+                std::cout << " = ";
+                TraverseStmt(binaryOperator->getLHS());
+            }
+
+            std::cout << " " << opcodeStr << " ";
             TraverseStmt(binaryOperator->getRHS());
             return true;
         }

@@ -12,7 +12,7 @@
 using namespace clang;
 using namespace clang::tooling;
 
-std::string escapeString(std::string const &input)
+std::string escapeString(std::string const& input)
 {
     std::ostringstream ss;
     for (auto c : input)
@@ -54,11 +54,9 @@ std::string escapeString(std::string const &input)
 class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 {
   public:
-    explicit DumpVisitor(ASTContext *context) : context(context)
-    {
-    }
+    explicit DumpVisitor(ASTContext* context) : context(context) {}
 
-    void TraverseNewScope(Stmt *stmt)
+    void TraverseNewScope(Stmt* stmt)
     {
         if (!isa<CompoundStmt>(stmt))
         {
@@ -75,7 +73,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         }
     }
 
-    bool TraverseStmt(Stmt *stmt)
+    bool TraverseStmt(Stmt* stmt)
     {
         if (!stmt)
             return RecursiveASTVisitor::TraverseStmt(stmt);
@@ -147,7 +145,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         return RecursiveASTVisitor::TraverseStmt(stmt);
     }
 
-    bool TraverseDecl(Decl *decl)
+    bool TraverseDecl(Decl* decl)
     {
         if (auto functionDecl = dyn_cast<FunctionDecl>(decl))
         {
@@ -180,7 +178,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         return RecursiveASTVisitor::TraverseDecl(decl);
     }
 
-    bool VisitStmt(Stmt *stmt)
+    bool VisitStmt(Stmt* stmt)
     {
         if (auto stringLiteral = dyn_cast<StringLiteral>(stmt))
         {
@@ -212,7 +210,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         return true;
     }
 
-    bool VisitDecl(Decl *decl)
+    bool VisitDecl(Decl* decl)
     {
         if (auto varDecl = dyn_cast<VarDecl>(decl))
         {
@@ -234,13 +232,10 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             std::cout << ' ';
     }
 
-    bool HasFoundMain()
-    {
-        return foundMain;
-    }
+    bool HasFoundMain() { return foundMain; }
 
   private:
-    ASTContext *context;
+    ASTContext* context;
     uint32_t depth = 0;
     bool foundMain = false;
 };
@@ -248,17 +243,17 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 class DumpConsumer : public ASTConsumer
 {
   public:
-    explicit DumpConsumer(CompilerInstance &compiler) : visitor(&compiler.getASTContext()),
-                                                        sourceManager(compiler.getSourceManager())
+    explicit DumpConsumer(CompilerInstance& compiler)
+        : visitor(&compiler.getASTContext()), sourceManager(compiler.getSourceManager())
     {
     }
 
-    virtual void HandleTranslationUnit(ASTContext &context) override
+    virtual void HandleTranslationUnit(ASTContext& context) override
     {
         auto decls = context.getTranslationUnitDecl()->decls();
         for (auto decl : decls)
         {
-            auto const &fileId = sourceManager.getFileID(decl->getLocation());
+            auto const& fileId = sourceManager.getFileID(decl->getLocation());
             if (fileId != sourceManager.getMainFileID())
                 continue;
 
@@ -276,20 +271,19 @@ class DumpConsumer : public ASTConsumer
 
   private:
     DumpVisitor visitor;
-    SourceManager &sourceManager;
+    SourceManager& sourceManager;
 };
 
 class DumpAction : public ASTFrontendAction
 {
   public:
-    virtual bool BeginSourceFileAction(CompilerInstance &compiler, StringRef) override
+    virtual bool BeginSourceFileAction(CompilerInstance& compiler, StringRef) override
     {
         class PrintIncludes : public PPCallbacks
         {
-            virtual void InclusionDirective(
-                SourceLocation, Token const &, StringRef fileName,
-                bool isAngled, CharSourceRange, FileEntry const *, StringRef, StringRef,
-                Module const *) override
+            virtual void InclusionDirective(SourceLocation, Token const&, StringRef fileName,
+                                            bool isAngled, CharSourceRange, FileEntry const*,
+                                            StringRef, StringRef, Module const*) override
             {
                 auto newFileName = fileName.str();
                 newFileName = newFileName.substr(0, newFileName.find_last_of('.'));
@@ -303,14 +297,14 @@ class DumpAction : public ASTFrontendAction
         };
 
         std::unique_ptr<PrintIncludes> callback(new PrintIncludes);
-        auto &preprocessor = compiler.getPreprocessor();
+        auto& preprocessor = compiler.getPreprocessor();
         preprocessor.addPPCallbacks(std::move(callback));
 
         return true;
     }
 
-    virtual std::unique_ptr<ASTConsumer> CreateASTConsumer(
-        CompilerInstance &compiler, llvm::StringRef inFile) override
+    virtual std::unique_ptr<ASTConsumer> CreateASTConsumer(CompilerInstance& compiler,
+                                                           llvm::StringRef inFile) override
     {
         return std::unique_ptr<ASTConsumer>(new DumpConsumer(compiler));
     }

@@ -1,0 +1,1 @@
+int atoi(char const*);

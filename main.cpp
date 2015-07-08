@@ -131,7 +131,8 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             TraverseStmt(arraySubscriptExpr->getBase());
             std::cout << "[";
             TraverseStmt(arraySubscriptExpr->getIdx());
-            std::cout << "]";
+            // Add 1 to compensate for 1-based indexing
+            std::cout << "+1]";
             return true;
         }
 
@@ -264,9 +265,13 @@ class DumpConsumer : public ASTConsumer
             visitor.TraverseDecl(decl);
         }
 
-        // Increase argument count as arg[0] is not counted in #arg
+        // Pass args to main(), and call it
         if (visitor.HasFoundMain())
-            std::cout << "return main(#arg + 1, arg)\n";
+        {
+            std::cout << "return (function() "
+                      << "table.insert(arg, 1, arg[0]); "
+                      << "return main(#arg, arg) end)()\n";
+        }
     }
 
   private:

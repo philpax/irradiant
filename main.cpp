@@ -157,6 +157,10 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
     {
         if (auto functionDecl = dyn_cast<FunctionDecl>(decl))
         {
+            // Skip over function declarations
+            if (!functionDecl->doesThisDeclarationHaveABody())
+                return true;
+
             if (functionDecl->isMain())
                 foundMain = true;
 

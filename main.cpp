@@ -299,6 +299,30 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        // Lower for loops to while loops, because C is a wonderful language
+        // in which anything can happen in a for loop's expressions >_>
+        if (auto forStmt = dyn_cast<ForStmt>(stmt))
+        {
+            TraverseStmt(forStmt->getInit());
+            std::cout << "\n";
+
+            WriteDepth();
+            std::cout << "while ";
+            TraverseCondition(forStmt->getCond());
+            std::cout << " do\n";
+
+            TraverseNewScope(forStmt->getBody());
+            ++depth;
+            WriteDepth();
+            TraverseStmt(forStmt->getInc());
+            --depth;
+            std::cout << "\n";
+
+            WriteDepth();
+            std::cout << "end";
+            return true;
+        }
+
         if (auto arraySubscriptExpr = dyn_cast<ArraySubscriptExpr>(stmt))
         {
             TraverseStmt(arraySubscriptExpr->getBase());

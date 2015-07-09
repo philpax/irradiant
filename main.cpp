@@ -330,6 +330,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             TraverseNewScope(forStmt->getBody());
             ++depth;
             WriteDepth();
+            std::cout << ";";
             TraverseStmt(forStmt->getInc());
             --depth;
             std::cout << "\n";

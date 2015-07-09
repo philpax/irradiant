@@ -624,8 +624,6 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             if (functionDecl->isMain())
                 foundMain = true;
 
-            std::cout << "\n";
-
             WriteDepth();
             std::cout << "function " << functionDecl->getNameAsString();
             std::cout << "(";
@@ -645,7 +643,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 TraverseStmt(functionDecl->getBody());
 
             WriteDepth();
-            std::cout << "end\n";
+            std::cout << "end\n\n";
             return true;
         }
 

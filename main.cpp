@@ -81,6 +81,22 @@ void IncludeFile(std::string const& path)
     }
 }
 
+template <typename T>
+T* RecurseUntilType(Stmt* stmt)
+{
+    if (isa<T>(stmt))
+        return cast<T>(stmt);
+
+    for (auto child : stmt->children())
+    {
+        auto ret = RecurseUntilType<T>(child);
+        if (ret)
+            return ret;
+    }
+
+    return nullptr;
+}
+
 class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 {
   public:
@@ -351,6 +367,22 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 TraverseStmt(unaryOperator->getSubExpr());
                 std::cout << ")";
                 break;
+            case UO_Deref:
+            {
+                // Special case based on RHS type
+                auto declRefExpr = RecurseUntilType<DeclRefExpr>(unaryOperator->getSubExpr());
+                if (!declRefExpr)
+                    break;
+
+                auto decl = declRefExpr->getDecl();
+                auto& type = *decl->getType();
+                if (type.isFunctionPointerType())
+                {
+                    // Emit the decl: no dereferencing required
+                    std::cout << decl->getNameAsString();
+                }
+                break;
+            }
             // Lower pre/post operators to functions
             // Pre: (function() expr = expr OP 1; return expr)()
             // Post: (function() local _ = expr; expr = expr OP 1; return _)()

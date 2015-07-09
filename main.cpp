@@ -356,6 +356,19 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        // Lower ternary operator to a closure
+        if (auto conditionalOperator = dyn_cast<ConditionalOperator>(stmt))
+        {
+            std::cout << "(function() if ";
+            TraverseCondition(conditionalOperator->getCond());
+            std::cout << " then return ";
+            TraverseStmt(conditionalOperator->getTrueExpr());
+            std::cout << " else return ";
+            TraverseStmt(conditionalOperator->getFalseExpr());
+            std::cout << " end end)()";
+            return true;
+        }
+
         if (auto parenExpr = dyn_cast<ParenExpr>(stmt))
         {
             std::cout << "(";

@@ -359,13 +359,13 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 TraverseStmt(unaryOperator->getSubExpr());
                 break;
             case UO_Not:
-                std::cout << "not ";
-                TraverseStmt(unaryOperator->getSubExpr());
-                break;
-            case UO_LNot:
                 std::cout << "bit._not(";
                 TraverseStmt(unaryOperator->getSubExpr());
                 std::cout << ")";
+                break;
+            case UO_LNot:
+                std::cout << "not ";
+                TraverseStmt(unaryOperator->getSubExpr());
                 break;
             case UO_Deref:
             {

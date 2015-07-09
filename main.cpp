@@ -73,6 +73,13 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         }
     }
 
+    void TraverseCondition(Stmt* stmt)
+    {
+        handlingAssignmentInCondition = true;
+        TraverseStmt(stmt);
+        handlingAssignmentInCondition = false;
+    }
+
     bool TraverseStmt(Stmt* stmt)
     {
         if (!stmt)
@@ -118,7 +125,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         if (auto ifStmt = dyn_cast<IfStmt>(stmt))
         {
             std::cout << "if ";
-            TraverseStmt(ifStmt->getCond());
+            TraverseCondition(ifStmt->getCond());
             std::cout << " then\n";
 
             TraverseNewScope(ifStmt->getThen());
@@ -136,7 +143,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
             WriteDepth();
             std::cout << "until not (";
-            TraverseStmt(doStmt->getCond());
+            TraverseCondition(doStmt->getCond());
             std::cout << ")";
             return true;
         }
@@ -144,7 +151,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         if (auto whileStmt = dyn_cast<WhileStmt>(stmt))
         {
             std::cout << "while ";
-            TraverseStmt(whileStmt->getCond());
+            TraverseCondition(whileStmt->getCond());
             std::cout << " do\n";
 
             TraverseNewScope(whileStmt->getBody());
@@ -229,6 +236,11 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
         if (auto binaryOperator = dyn_cast<BinaryOperator>(stmt))
         {
+            if (binaryOperator->isAssignmentOp() && handlingAssignmentInCondition)
+            {
+                std::cout << "(function() ";
+            }
+
             if (binaryOperator->isCompoundAssignmentOp())
             {
                 TraverseStmt(binaryOperator->getLHS());
@@ -333,6 +345,13 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 break;
             }
             TraverseStmt(binaryOperator->getRHS());
+
+            if (binaryOperator->isAssignmentOp() && handlingAssignmentInCondition)
+            {
+                std::cout << "; return ";
+                TraverseStmt(binaryOperator->getLHS());
+                std::cout << " end)()";
+            }
 
             return true;
         }
@@ -527,6 +546,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
     ASTContext* context;
     uint32_t depth = 0;
     bool foundMain = false;
+    bool handlingAssignmentInCondition = false;
 };
 
 class DumpConsumer : public ASTConsumer

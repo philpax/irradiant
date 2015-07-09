@@ -315,7 +315,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 std::cout << " == ";
                 break;
             case BO_NE:
-                std::cout << " != ";
+                std::cout << " ~= ";
                 break;
             case BO_LAnd:
                 std::cout << " and ";

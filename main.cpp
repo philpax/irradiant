@@ -517,6 +517,14 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        if (auto characterLiteral = dyn_cast<CharacterLiteral>(stmt))
+        {
+            // Unlikely to be portable, but works well enough for our purposes
+            auto value = static_cast<wchar_t>(characterLiteral->getValue());
+            std::wcout << L"string.byte(\"" << value << L"\")";
+            return true;
+        }
+
         if (auto integerLiteral = dyn_cast<IntegerLiteral>(stmt))
         {
             std::cout << integerLiteral->getValue().toString(10, true);

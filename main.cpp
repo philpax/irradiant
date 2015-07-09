@@ -90,7 +90,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             depth++;
             for (auto stmt : compoundStmt->body())
             {
-                if (!stmt)
+                if (!stmt || isa<NullStmt>(stmt))
                     continue;
 
                 WriteDepth();
@@ -152,6 +152,94 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             {
                 std::cout << "end";
             }
+            return true;
+        }
+
+        if (auto switchStmt = dyn_cast<SwitchStmt>(stmt))
+        {
+            // Save counter in the event we have nested switches
+            auto currentCounter = counter;
+            std::cout << "local _switchTempTable" << currentCounter << " = {}\n";
+            Stmt* defaultStmtBody = nullptr;
+
+            if (auto compoundStmt = dyn_cast<CompoundStmt>(switchStmt->getBody()))
+            {
+                bool first = true;
+                for (auto stmt : compoundStmt->body())
+                {
+                    if (isa<CaseStmt>(stmt))
+                        TraverseStmt(stmt);
+                    else if (auto defaultStmt = dyn_cast<DefaultStmt>(stmt))
+                        defaultStmtBody = defaultStmt->getSubStmt();
+                }
+            }
+
+            WriteDepth();
+            std::cout << "if _switchTempTable" << currentCounter << "[";
+            TraverseStmt(switchStmt->getCond());
+            std::cout << "] ~= nil then\n";
+
+            ++depth;
+            WriteDepth();
+            std::cout << "_switchTempTable" << currentCounter << "[";
+            TraverseStmt(switchStmt->getCond());
+            std::cout << "]()\n";
+            --depth;
+
+            if (defaultStmtBody)
+            {
+                WriteDepth();
+                std::cout << "else\n";
+                TraverseNewScope(defaultStmtBody);
+            }
+
+            WriteDepth();
+            std::cout << "end";
+            ++counter;
+
+            return true;
+        }
+
+        if (auto caseStmt = dyn_cast<CaseStmt>(stmt))
+        {
+            // Save counter in the event we have nested switches
+            auto currentCounter = counter;
+            auto body = caseStmt->getSubStmt();
+
+            Expr* prevCaseLHS = nullptr;
+
+            if (isa<CaseStmt>(body))
+            {
+                TraverseStmt(body);
+                prevCaseLHS = dyn_cast<CaseStmt>(body)->getLHS();
+            }
+
+            WriteDepth();
+            std::cout << "_switchTempTable" << currentCounter << "[";
+            TraverseStmt(caseStmt->getLHS());
+            std::cout << "] = ";
+
+            if (!isa<CaseStmt>(body))
+            {
+                std::cout << "function()\n";
+                TraverseNewScope(body);
+                WriteDepth();
+                std::cout << "end";
+            }
+            else if (prevCaseLHS)
+            {
+                std::cout << "_switchTempTable" << currentCounter << "[";
+                TraverseStmt(prevCaseLHS);
+                std::cout << "]";
+            }
+            else
+            {
+                // Unhandled catch-all
+                std::cout << "function() end";
+            }
+
+            std::cout << "\n";
+
             return true;
         }
 
@@ -588,6 +676,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
     uint32_t depth = 0;
     bool foundMain = false;
     bool handlingAssignmentInCondition = false;
+    uint32_t counter = 0;
 };
 
 class DumpConsumer : public ASTConsumer

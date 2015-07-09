@@ -124,6 +124,19 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             return true;
         }
 
+        if (auto doStmt = dyn_cast<DoStmt>(stmt))
+        {
+            std::cout << "repeat\n";
+
+            TraverseNewScope(doStmt->getBody());
+
+            WriteDepth();
+            std::cout << "until not (";
+            TraverseStmt(doStmt->getCond());
+            std::cout << ")";
+            return true;
+        }
+
         if (auto arraySubscriptExpr = dyn_cast<ArraySubscriptExpr>(stmt))
         {
             TraverseStmt(arraySubscriptExpr->getBase());

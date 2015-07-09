@@ -12,6 +12,7 @@ function putchar(char)
 end
 
 function fprintf(file, str, ...)
+    str = str:gsub("%%[Ll]", "%%")
     file:write(str:format(...))
 end
 

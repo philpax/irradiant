@@ -131,7 +131,27 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             TraverseNewScope(ifStmt->getThen());
 
             WriteDepth();
-            std::cout << "end";
+            auto elseStmt = ifStmt->getElse();
+            if (elseStmt)
+            {
+                std::cout << "else";
+                if (isa<IfStmt>(elseStmt))
+                {
+                    TraverseStmt(elseStmt);
+                }
+                else
+                {
+                    std::cout << "\n";
+                    TraverseNewScope(elseStmt);
+
+                    WriteDepth();
+                    std::cout << "end";
+                }
+            }
+            else
+            {
+                std::cout << "end";
+            }
             return true;
         }
 

@@ -87,6 +87,10 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                     continue;
 
                 WriteDepth();
+                // HACK: Fix precedence issues with closures being called straight away
+                if (isa<UnaryOperator>(stmt))
+                    std::cout << ";";
+
                 TraverseStmt(stmt);
                 std::cout << "\n";
             }
@@ -164,6 +168,45 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 std::cout << "bit._not(";
                 TraverseStmt(unaryOperator->getSubExpr());
                 std::cout << ")";
+                break;
+            // Lower pre/post operators to functions
+            // Pre: (function() expr = expr OP 1; return expr)()
+            // Post: (function() local _ = expr; expr = expr OP 1; return _)()
+            case UO_PreDec:
+                std::cout << "(function() ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " = ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " - 1; return ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " end)()";
+                break;
+            case UO_PreInc:
+                std::cout << "(function() ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " = ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " + 1; return ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " end)()";
+                break;
+            case UO_PostDec:
+                std::cout << "(function() local _ = ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << "; ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " = ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " - 1; return _ end)()";
+                break;
+            case UO_PostInc:
+                std::cout << "(function() local _ = ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << "; ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " = ";
+                TraverseStmt(unaryOperator->getSubExpr());
+                std::cout << " + 1; return _ end)()";
                 break;
             default:
                 break;

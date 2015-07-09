@@ -8,11 +8,17 @@
 
 #include <iostream>
 #include <sstream>
+#include <fstream>
 
 using namespace clang;
 using namespace clang::tooling;
 
-std::string escapeString(std::string const& input)
+namespace cl = llvm::cl;
+
+static cl::opt<bool> ShimInclude("shim-include", cl::init(false), cl::NotHidden,
+    cl::desc("Controls whether shims should be baked into the resulting script."));
+
+std::string EscapeString(std::string const& input)
 {
     std::ostringstream ss;
     for (auto c : input)
@@ -49,6 +55,30 @@ std::string escapeString(std::string const& input)
         }
     }
     return ss.str();
+}
+
+void IncludeFile(std::string const& path)
+{
+    if (ShimInclude)
+    {
+        std::fstream file(path);
+        std::string str;
+
+        file.seekg(0, std::ios::end);
+        str.resize(file.tellg());
+        file.seekg(0, std::ios::beg);
+
+        file.read(&str[0], str.size());
+
+        std::cout << "-- " << path << "\n";
+        if (file.fail())
+            std::cout << "-- Failed to read file!\n";
+        std::cout << str;
+    }
+    else
+    {
+        std::cout << "dofile \"" << path << "\"\n";
+    }
 }
 
 class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
@@ -621,7 +651,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
     {
         if (auto stringLiteral = dyn_cast<StringLiteral>(stmt))
         {
-            std::cout << '"' << escapeString(stringLiteral->getString().str()) << '"';
+            std::cout << '"' << EscapeString(stringLiteral->getString().str()) << '"';
             return true;
         }
 
@@ -689,6 +719,9 @@ class DumpConsumer : public ASTConsumer
 
     virtual void HandleTranslationUnit(ASTContext& context) override
     {
+        auto entry = sourceManager.getFileEntryForID(sourceManager.getMainFileID());
+        std::cout << "-- main file\n";
+
         auto decls = context.getTranslationUnitDecl()->decls();
         for (auto decl : decls)
         {
@@ -718,7 +751,7 @@ class DumpAction : public ASTFrontendAction
   public:
     virtual bool BeginSourceFileAction(CompilerInstance& compiler, StringRef) override
     {
-        std::cout << "dofile \"shim/lua/bitwise.lua\"\n";
+        IncludeFile("shim/lua/bitwise.lua");
 
         class PrintIncludes : public PPCallbacks
         {
@@ -743,7 +776,7 @@ class DumpAction : public ASTFrontendAction
                 if (isAngled)
                     newFileName = "shim/lua/" + newFileName;
 
-                std::cout << "dofile \"" << newFileName << "\"\n";
+                IncludeFile(newFileName);
             }
 
             SourceManager& sourceManager;

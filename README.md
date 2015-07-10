@@ -20,3 +20,6 @@ Basic features:
 Everything unimplemented, but the big ones:
 * Pointers
 * Implicit fallthrough in switch statements
+* Structs
+* The heap
+* Basically anything complicated

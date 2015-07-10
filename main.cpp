@@ -15,8 +15,8 @@ using namespace clang::tooling;
 
 namespace cl = llvm::cl;
 
-static cl::opt<bool> ShimInclude("shim-include", cl::init(false), cl::NotHidden,
-    cl::desc("Controls whether shims should be baked into the resulting script."));
+static cl::opt<bool> BakeIncludes("bake-includes", cl::init(false), cl::NotHidden,
+    cl::desc("Controls whether includes should be baked into the resulting script."));
 
 std::string EscapeString(std::string const& input)
 {
@@ -59,9 +59,16 @@ std::string EscapeString(std::string const& input)
 
 void IncludeFile(std::string const& path)
 {
-    if (ShimInclude)
+    if (BakeIncludes)
     {
         std::fstream file(path);
+
+        if (file.fail())
+        {
+            std::cout << "-- Failed to read file: " << path << "\n";
+            return;
+        }
+
         std::string str;
 
         file.seekg(0, std::ios::end);
@@ -71,8 +78,6 @@ void IncludeFile(std::string const& path)
         file.read(&str[0], str.size());
 
         std::cout << "-- " << path << "\n";
-        if (file.fail())
-            std::cout << "-- Failed to read file!\n";
         std::cout << str;
     }
     else

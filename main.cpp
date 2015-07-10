@@ -436,6 +436,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
         if (auto binaryOperator = dyn_cast<BinaryOperator>(stmt))
         {
+
             if (binaryOperator->isAssignmentOp() && handlingAssignmentInCondition)
             {
                 std::cout << "(function() ";
@@ -581,6 +582,17 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         {
             bool first = true;
 
+            if (declStmt->isSingleDecl())
+            {
+                auto decl = declStmt->getSingleDecl();
+
+                if (isa<EnumDecl>(decl))
+                {
+                    TraverseDecl(decl);
+                    return true;
+                }
+            }
+
             std::vector<Expr*> initExprs;
             for (auto decl : declStmt->decls())
             {
@@ -701,6 +713,26 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 TraverseStmt(varDecl->getInit());
             }
 
+            return true;
+        }
+
+        if (auto enumDecl = dyn_cast<EnumDecl>(decl))
+        {
+            std::cout << "-- " << enumDecl->getNameAsString();
+            for (auto decl : enumDecl->decls())
+            {
+                std::cout << "\n";
+                WriteDepth();
+                TraverseDecl(decl);
+            }
+            return true;
+        }
+
+        if (auto enumConstantDecl = dyn_cast<EnumConstantDecl>(decl))
+        {
+            std::cout << "local "
+                      << enumConstantDecl->getNameAsString() << " = "
+                      << enumConstantDecl->getInitVal().toString(10, true);
             return true;
         }
 

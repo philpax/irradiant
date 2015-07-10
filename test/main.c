@@ -10,6 +10,13 @@ int add(int a, int b)
 
 int main(int argc, char** argv)
 {
+    enum IrradiantStatus
+    {
+        IRRADIANTSTATUS_BAD,
+        IRRADIANTSTATUS_OK = 2,
+        IRRADIANTSTATUS_GOOD
+    };
+
     char const* name = "Irradiant";
     printf("Hello, world from %s", name);
     if (argc > 1)
@@ -21,6 +28,8 @@ int main(int argc, char** argv)
 
     float x = 3.14159, y = 13.37, z = 42.42;
     printf("Perlin noise at (%f, %f, %f): %f\n", x, y, z, stb_perlin_noise3(x, y, z, 0, 0, 0));
+
+    printf("Irradiant status: %d\n", IRRADIANTSTATUS_GOOD);
 
     return 0;
 }

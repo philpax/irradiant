@@ -8,6 +8,12 @@ int add(int a, int b)
     return a + b;
 }
 
+int static_increment()
+{
+    static int x = 0, y = 0;
+    return ++x + y;
+}
+
 int main(int argc, char** argv)
 {
     enum IrradiantStatus
@@ -22,6 +28,9 @@ int main(int argc, char** argv)
     if (argc > 1)
         printf(" and %s", argv[1]);
     printf("!\n");
+
+    for (int i = 0; i < 3; ++i)
+        printf("static_increment: %d\n", static_increment());
 
     if (argc > 3)
         printf("Sum: %d\n", add(atoi(argv[2]), atoi(argv[3])));

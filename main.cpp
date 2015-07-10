@@ -9,6 +9,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <deque>
 
 using namespace clang;
 using namespace clang::tooling;
@@ -129,6 +130,21 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         handlingAssignmentInCondition = true;
         TraverseStmt(stmt);
         handlingAssignmentInCondition = false;
+    }
+
+    std::string GetNameForVarDecl(VarDecl* varDecl)
+    {
+        auto name = varDecl->getNameAsString();
+
+        if (varDecl->isStaticLocal() && !name.empty())
+        {
+            std::string prefix = "_";
+            for (auto& string : scopeStack)
+                prefix += string + "_";
+            name = prefix + name;
+        }
+
+        return name;
     }
 
     bool TraverseStmt(Stmt* stmt)
@@ -436,7 +452,6 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
         if (auto binaryOperator = dyn_cast<BinaryOperator>(stmt))
         {
-
             if (binaryOperator->isAssignmentOp() && handlingAssignmentInCondition)
             {
                 std::cout << "(function() ";
@@ -593,26 +608,39 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 }
             }
 
-            std::vector<Expr*> initExprs;
+            std::vector<VarDecl*> initDecls;
+            bool isStatic = false;
             for (auto decl : declStmt->decls())
             {
-                if (first)
-                    std::cout << "local ";
-                else
-                    std::cout << ", ";
-
                 if (auto varDecl = dyn_cast<VarDecl>(decl))
                 {
-                    auto name = varDecl->getNameAsString();
+                    if (first)
+                    {
+                        isStatic = varDecl->isStaticLocal();
+
+                        if (!isStatic)
+                            std::cout << "local ";
+                        else
+                            std::cout << "if ";
+                    }
+                    else
+                    {
+                        if (!isStatic)
+                            std::cout << ", ";
+                        else
+                            std::cout << " or ";
+                    }
+
+                    auto name = GetNameForVarDecl(varDecl);
                     if (name.empty())
                         continue;
 
                     std::cout << name;
 
-                    if (varDecl->hasInit())
-                        initExprs.push_back(varDecl->getInit());
-                    else
-                        initExprs.push_back(nullptr);
+                    if (isStatic)
+                        std::cout << " == nil";
+
+                    initDecls.push_back(varDecl);
                 }
                 else
                 {
@@ -621,24 +649,63 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 first = false;
             }
 
-            auto notNullPredicate = [](Expr* e) { return e != nullptr; };
-            if (initExprs.size() &&
-                std::any_of(initExprs.begin(), initExprs.end(), notNullPredicate))
+            if (isStatic)
             {
-                std::cout << " = ";
-                bool first = true;
-                for (auto expr : initExprs)
+                std::cout << " then\n";
+                depth++;
+            }
+
+            auto notNullPredicate = [](VarDecl* e) { return e->hasInit(); };
+            if (initDecls.size() &&
+                std::any_of(initDecls.begin(), initDecls.end(), notNullPredicate))
+            {
+                if (!isStatic)
                 {
-                    if (!first)
-                        std::cout << ", ";
+                    std::cout << " = ";
+                    bool first = true;
+                    for (auto varDecl : initDecls)
+                    {
+                        if (!first)
+                            std::cout << ", ";
 
-                    if (expr == nullptr)
-                        std::cout << "nil";
-                    else
-                        TraverseStmt(expr);
+                        auto expr = varDecl->getInit();
 
-                    first = false;
+                        if (expr == nullptr)
+                            std::cout << "nil";
+                        else
+                            TraverseStmt(expr);
+
+                        first = false;
+                    }
                 }
+                else
+                {
+                    for (auto varDecl : initDecls)
+                    {
+                        auto name = GetNameForVarDecl(varDecl);
+                        if (name.empty())
+                            continue;
+
+                        WriteDepth();
+                        std::cout << name << " = ";
+
+                        auto expr = varDecl->getInit();
+
+                        if (expr == nullptr)
+                            std::cout << "nil";
+                        else
+                            TraverseStmt(expr);
+
+                        std::cout << "\n";
+                    }
+                }
+            }
+
+            if (isStatic)
+            {
+                depth--;
+                WriteDepth();
+                std::cout << "end";
             }
 
             return true;
@@ -674,6 +741,8 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
             if (functionDecl->isMain())
                 foundMain = true;
 
+            scopeStack.push_back(functionDecl->getNameAsString());
+
             WriteDepth();
             std::cout << "function " << functionDecl->getNameAsString();
             std::cout << "(";
@@ -694,6 +763,8 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
             WriteDepth();
             std::cout << "end\n\n";
+
+            scopeStack.pop_back();
             return true;
         }
 
@@ -701,7 +772,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
         // unhandled var decls (see: global scope)
         if (auto varDecl = dyn_cast<VarDecl>(decl))
         {
-            auto name = varDecl->getNameAsString();
+            auto name = GetNameForVarDecl(varDecl);
             if (name.empty())
                 return true;
 
@@ -769,7 +840,11 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
         if (auto declRefExpr = dyn_cast<DeclRefExpr>(stmt))
         {
-            std::cout << declRefExpr->getDecl()->getNameAsString();
+            auto decl = declRefExpr->getDecl();
+            if (auto varDecl = cast<VarDecl>(decl))
+                std::cout << GetNameForVarDecl(varDecl);
+            else
+                std::cout << decl->getNameAsString();
             return true;
         }
 
@@ -799,6 +874,7 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
     bool foundMain = false;
     bool handlingAssignmentInCondition = false;
     uint32_t counter = 0;
+    std::deque<std::string> scopeStack;
 };
 
 class DumpConsumer : public ASTConsumer

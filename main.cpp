@@ -608,7 +608,13 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 }
             }
 
-            std::vector<VarDecl*> initDecls;
+            struct InitDecl
+            {
+                VarDecl* decl = nullptr;
+                size_t size = 0;
+            };
+
+            std::vector<InitDecl> initDecls;
             bool isStatic = false;
             for (auto decl : declStmt->decls())
             {
@@ -640,7 +646,14 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                     if (isStatic)
                         std::cout << " == nil";
 
-                    initDecls.push_back(varDecl);
+                    InitDecl initDecl;
+                    initDecl.decl = varDecl;
+
+                    auto constantArrayType = dyn_cast<ConstantArrayType>(varDecl->getType());
+                    if (constantArrayType)
+                        initDecl.size = constantArrayType->getSize().getLimitedValue();
+
+                    initDecls.push_back(initDecl);
                 }
                 else
                 {
@@ -655,32 +668,18 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
                 depth++;
             }
 
-            auto notNullPredicate = [](VarDecl* e) { return e->hasInit(); };
-            if (initDecls.size() &&
-                std::any_of(initDecls.begin(), initDecls.end(), notNullPredicate))
+            if (initDecls.size())
             {
+                bool first = true;
                 if (!isStatic)
-                {
                     std::cout << " = ";
-                    bool first = true;
-                    for (auto varDecl : initDecls)
-                    {
-                        if (!first)
-                            std::cout << ", ";
 
-                        auto expr = varDecl->getInit();
-
-                        if (expr == nullptr)
-                            std::cout << "nil";
-                        else
-                            TraverseStmt(expr);
-
-                        first = false;
-                    }
-                }
-                else
+                for (auto initDecl : initDecls)
                 {
-                    for (auto varDecl : initDecls)
+                    auto varDecl = initDecl.decl;
+                    auto expr = varDecl->getInit();
+
+                    if (isStatic)
                     {
                         auto name = GetNameForVarDecl(varDecl);
                         if (name.empty())
@@ -688,16 +687,28 @@ class DumpVisitor : public RecursiveASTVisitor<DumpVisitor>
 
                         WriteDepth();
                         std::cout << name << " = ";
-
-                        auto expr = varDecl->getInit();
-
-                        if (expr == nullptr)
-                            std::cout << "nil";
-                        else
-                            TraverseStmt(expr);
-
-                        std::cout << "\n";
                     }
+                    else
+                    {
+                        if (!first)
+                            std::cout << ", ";
+                    }
+
+                    if (initDecl.size)
+                        std::cout << "mem.make_array(" << initDecl.size << ", ";
+
+                    if (expr == nullptr)
+                        std::cout << "0";
+                    else
+                        TraverseStmt(expr);
+
+                    if (initDecl.size)
+                        std::cout << ")";
+
+                    if (isStatic)
+                        std::cout << "\n";
+
+                    first = false;
                 }
             }
 
@@ -919,6 +930,7 @@ class DumpAction : public ASTFrontendAction
   public:
     virtual bool BeginSourceFileAction(CompilerInstance& compiler, StringRef) override
     {
+        IncludeFile("shim/lua/memory.lua");
         IncludeFile("shim/lua/bitwise.lua");
 
         class PrintIncludes : public PPCallbacks
